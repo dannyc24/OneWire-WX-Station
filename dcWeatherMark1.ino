@@ -72,7 +72,7 @@ byte dswitch[] = {0x12, 0xF2, 0xC1, 0x0A, 0x00, 0x00, 0x00, 0x69};
 
 
 long lasttimesnap;
-int lastwssnap;
+uint32_t lastwssnap;
 
 char* windDirectionArray[17] = {"x", "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"};
 
@@ -333,7 +333,7 @@ void onewireSensorSwitcher(String in){
 }
 
 void processWindSpeed(){
-  int count1 = GetWindCount();
+  uint32_t count1 = GetWindCount();
   long currTime = millis();
 
   long timeDiff =  abs(currTime - lasttimesnap);
@@ -345,12 +345,12 @@ void processWindSpeed(){
   
 }
 
-float dcWindSpeed(int ws1, int ws2, long timediff){
-  int cCount = abs(ws1 - ws2);
+float dcWindSpeed(uint32_t ws1, uint32_t ws2, long timediff){
+  int cCount = (ws1 - ws2);
 //  Serial.print("Count Difference:");
 //  Serial.println(cCount);
-  float f1 = cCount * 1000;
-  float f2 = f1 / timediff;
+  float f1 = abs(cCount) * 1000;
+  float f2 = f1 / abs(timediff);
   float f3 = f2 / 2.0;
 
 //  Serial.print("DC Speed:");
@@ -438,6 +438,25 @@ int GetWindCount()
   return(data[0]);  //As we're only using the lowest byte we don't need data[1 to 3]
 }
 
+//Test Count --- Sourced From https://www.element14.com/community/groups/internet-of-things/blog/2015/01/07/old-meets-new-the-1-wire-weather-station-on-the-spark-core-part-5
+uint32_t GetWindCount2(){
+  byte data[38];
+  ds.reset();
+  ds.select(addr);
+
+  ds.write(0xa5,0);
+  ds.write(0xc0,0);
+  ds.write(0x01,0);
+
+  ds.read_bytes(data, 38);
+
+  uint32_t count = (uint32_t)data[38];
+
+  for(int j = 34; j >=32; j--){
+    count = (count << 8) + (uint32_t)data[j];
+  }
+  return count;
+}
 int GetCount2()
 {
   byte data[12];
