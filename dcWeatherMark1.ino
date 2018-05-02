@@ -78,6 +78,12 @@ char* windDirectionArray[17] = {"x", "N", "NNE", "NE", "ENE", "E", "ESE", "SE", 
 
 boolean initOledClear = false;
 
+
+//Adding these vars for Error debug for windspeed
+uint32_t e_count1, e_count2;
+long e_ts1, e_ts2;
+
+
 void setup() {
   // put your setup code here, to run once:
   //Wire.begin();
@@ -224,9 +230,18 @@ void renderJsonCurrentWX(){
   m += "\"WindDirection\":\"" + String(windDirectionArray[currWDi]) + "\",\n";
   m += "\"UVI\":" + String(currUV) + ",\n";
   m += "\"RainCounter\":\"n/a\",\n";
-  m += "\"Altimeter\":" + String(currAlt) + "\n";
+  m += "\"Altimeter\":" + String(currAlt) + ",\n";
   
 
+  //Render Error Output
+  m += "\"WSErrorDebug\":{\n";
+
+    m +="\t\"Count1\":" + String(e_count1) + ",\n";
+    m +="\t\"Count2\":" + String(e_count2) + ",\n";
+    m +="\t\"TS1\":" + String(e_ts1) + ",\n";
+    m += "\t\"TS2\":" + String(e_ts2) + "\n";
+    
+  m += "\t}\n";
   m += "}\n";
   server.send(200, "text/json", m);
 }
@@ -333,14 +348,46 @@ void onewireSensorSwitcher(String in){
 }
 
 void processWindSpeed(){
-  uint32_t count1 = GetWindCount();
+  uint32_t count1 = GetWindCount2();
   long currTime = millis();
-
+  Serial.print(count1);
+  Serial.println();
   long timeDiff =  abs(currTime - lasttimesnap);
-  currWS = dcWindSpeed(lastwssnap,count1,timeDiff) * 2.2369;
 
-  lastwssnap = count1;
-  lasttimesnap = currTime;
+  float cWS = dcWindSpeed(lastwssnap,count1,timeDiff) * 2.2369;
+  if(cWS < 300 && cWS >= 0){
+    //Valid reading... PAss up.
+    currWS = cWS;
+
+    e_count1 = 0;
+    e_count2 = 0;
+    e_ts1 = 0;
+    e_ts2 = 0;
+
+    lastwssnap = count1;
+    lasttimesnap = currTime;
+  }
+  else {
+    //Error in Reading... Lets get Stat
+   
+    
+    e_count1 = count1;
+    e_count2 = lastwssnap;
+
+    e_ts1 = lasttimesnap;
+    e_ts2 = currTime;
+
+    Serial.println("Wind Speed Error Detected");
+    Serial.print("WS:");
+    Serial.print(e_count1);
+    Serial.print(" ");
+    Serial.print(e_count2);
+
+  }
+  
+//Moving in the If block to see if we can have it recover faster.. So as to not loose valuable dataset. 
+//  lastwssnap = count1;
+//  lasttimesnap = currTime;
   
   
 }
